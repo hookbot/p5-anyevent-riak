@@ -159,7 +159,7 @@ has connect_timeout     => ( is => 'ro',                 isa => Num,  default  =
 has timeout             => ( is => 'ro',                 isa => Num,  default  => sub {5} );
 has no_delay            => ( is => 'ro',                 isa => Bool, default  => sub {0} );
 
-has _handle => ( is => 'ro', lazy => 1, builder => sub {
+has _handle => ( is => 'ro', lazy => 1, clearer => 1, builder => sub {
     my ($self) = @_;
     my ($host, $port) = ($self->host, $self->port);
 
@@ -186,6 +186,20 @@ sub BUILD {
     $self->_handle();
 }
 
+=method $client->close($cb)
+
+This method will wait until everything has been written to the connection, then
+close the connection, and then calls the callback without parameters. Use this
+to properly close the connection, before destroying the client instance.
+
+=cut
+
+sub close {
+    my ($self, $callback) = @_;
+    defined $callback && ref($callback) eq 'CODE'
+      or croak "last parameter must be a CoderRef callback";
+    $self->_handle->on_drain( sub { shutdown($_[0]{fh}, 1); $self->_clear_handle(); $callback->(); } )
+}
 
 ### Deal with common, general case, Riak commands
 our $AUTOLOAD;
@@ -193,8 +207,6 @@ our $AUTOLOAD;
 sub AUTOLOAD {
   my $command = $AUTOLOAD;
   $command =~ s/.*://;
-
-  say "COMMAND: $command";
 
   my $request_name  = 'Rpb' . ucfirst(_to_camel($command)) . 'Req';
   my $response_name = 'Rpb' . ucfirst(_to_camel($command)) . 'Resp';
