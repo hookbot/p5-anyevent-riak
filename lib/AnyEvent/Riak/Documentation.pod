@@ -1,5 +1,7 @@
 package AnyEvent::Riak::Documentation;
 
+# ABSTRACT: AnyEvent Riak Client documentation
+
 1;
 
 =head1 METHODS

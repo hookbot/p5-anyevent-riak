@@ -114,9 +114,13 @@ my $message_codes = {
 
 =head1 DOCUMENTATION
 
-The exhaustive documentation, is to be found here:
+The exhaustive documentation is here:
 
 L<AnyEvent::Riak::Documentation>
+
+However, the current module doesn't support all features documented. C<get()>
+and C<put()> works, the rest may work... The status of supported functions will
+be updated.
 
 =attr host => $hostname
 
