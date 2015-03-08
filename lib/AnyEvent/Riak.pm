@@ -185,6 +185,7 @@ has _handle => ( is => 'ro', lazy => 1, clearer => 1, builder => sub {
 
 });
 
+=for Pod::Coverage BUILD
 
 sub BUILD {
     my ($self) = @_;
