@@ -77,6 +77,7 @@ my $message_codes = {
     on_connect       => sub { $cv1->send },
     on_connect_error => sub { $cv1->croak($_[1])},
   );
+  $cv1->recv;
 
   my $cv2
   $client->put({ bucket  => 'bucket_name',
@@ -155,9 +156,9 @@ has host                => ( is => 'ro', isa => Str,  default => sub { '127.0.0.
 has port                => ( is => 'ro', isa => Int,  default => sub { 8087 } );
 has on_connect          => ( is => 'ro', isa => CodeRef,  required => 1 );
 has on_connect_error    => ( is => 'ro', isa => CodeRef,  required => 1 );
-has connect_timeout     => ( is => 'ro',                 isa => Num,  default  => sub {5} );
-has timeout             => ( is => 'ro',                 isa => Num,  default  => sub {5} );
-has no_delay            => ( is => 'ro',                 isa => Bool, default  => sub {0} );
+has connect_timeout     => ( is => 'ro', isa => Num,  default  => sub {5} );
+has timeout             => ( is => 'ro', isa => Num,  default  => sub {5} );
+has no_delay            => ( is => 'ro', isa => Bool, default  => sub {0} );
 
 has _handle => ( is => 'ro', lazy => 1, clearer => 1, builder => sub {
     my ($self) = @_;
@@ -201,6 +202,9 @@ sub close {
     $self->_handle->on_drain( sub { shutdown($_[0]{fh}, 1); $self->_clear_handle(); $callback->(); } )
 }
 
+# we don't want DESTROY to be autoloaded
+sub DESTROY { }
+
 ### Deal with common, general case, Riak commands
 our $AUTOLOAD;
 
@@ -234,16 +238,17 @@ sub _run_cmd {
     if (defined $args) {
         eval { $body = "$request_name"->encode($args); 1 }
           or return $callback->(undef, { error_code => -1, error_message => $@ });
-    };
+    }
 
     my $handle = $self->_handle;
-
     $handle->on_error(sub {
         my ($handle, $fatal, $message) = @_;
         $fatal or $handle->destroy(); # force destroy even if non fatal
         $callback->(undef, { error_code => $!,
                              error_message => $message }) });
 
+    $handle->timeout_reset;
+    $handle->timeout($self->timeout);
     $handle->on_timeout(sub { $callback->(undef, { error_code => -1,
                                                    error_message => 'timeout' }) });
     $handle->push_write(  pack('N', bytes::length($body) + 1)
@@ -251,13 +256,14 @@ sub _run_cmd {
                        );
 
     $handle->timeout_reset;
-    $handle->timeout($self->timeout);
+
     $handle->push_read( chunk => 4, sub {
          my $len = unpack "N", $_[1];
          $handle->timeout_reset;
          $_[0]->unshift_read( chunk => $len, sub {
-             my ( $response_code, $response_body ) = unpack( 'c a*', $_[1] );
+             $handle->timeout_reset;
              $handle->timeout(0);
+             my ( $response_code, $response_body ) = unpack( 'c a*', $_[1] );
 
              if ($response_code == $message_codes->{RpbErrorResp}) {
                  my $decoded_message = RpbErrorResp->decode($response_body);
@@ -277,7 +283,8 @@ sub _run_cmd {
              return $callback->($result);
          });
      });
-
+    $handle->timeout_reset;
+    return;
 }
 
 sub _to_camel {
