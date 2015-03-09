@@ -187,6 +187,8 @@ has _handle => ( is => 'ro', lazy => 1, clearer => 1, builder => sub {
 
 =for Pod::Coverage BUILD
 
+=cut
+
 sub BUILD {
     my ($self) = @_;
     $self->_handle();
@@ -293,7 +295,9 @@ sub _run_cmd {
 }
 
 sub _to_camel {
-    $_[0] =~ s/_([a-z])/uc($1)/rge;
+    my ($str) = @_;
+    $str =~ s/_([a-z])/uc($1)/ge;
+    return $str;
 }
 
 1;

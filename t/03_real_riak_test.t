@@ -24,6 +24,8 @@ subtest "connection" => sub {
 
     my $cv1 = AE::cv;
     my $client = AnyEvent::Riak->new(
+        host => $host,
+        port => $port,
         on_connect       => sub { pass("client connected"); $cv1->send },
         on_connect_error => sub { fail("client not connected"); $cv1->croak($_[1])},
     );
@@ -34,9 +36,10 @@ subtest "connection" => sub {
 subtest "simple get/set/delete test" => sub {
     plan tests => 1;
 
-    my ( $host, $port ) = split ':', $ENV{RIAK_PBC_HOST};
     my $cv1 = AE::cv;
     my $client = AnyEvent::Riak->new(
+        host => $host,
+        port => $port,
         on_connect       => sub { $cv1->send },
         on_connect_error => sub { $cv1->croak($_[1]) },
     );
@@ -54,7 +57,7 @@ subtest "simple get/set/delete test" => sub {
                  sub {
                      my ($result, $err) = @_;
                      $err and $cv2->croak($err->{error_message});
-                     $cv2->send($result);
+                     $cv2->send;
                      ok("put plop");
                  } );
     $cv2->recv();
