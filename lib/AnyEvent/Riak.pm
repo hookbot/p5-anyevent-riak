@@ -2,7 +2,7 @@ package AnyEvent::Riak;
 
 # ABSTRACT: AnyEvent ProtocolBuffers Riak Client
 
-use 5.012;
+use 5.010;
 use strict;
 use warnings;
 use AnyEvent::Riak::PBC;
@@ -79,7 +79,7 @@ my $message_codes = {
   );
   $cv1->recv;
 
-  my $cv2
+  my $cv2 = AE::cv;
   $client->put({ bucket  => 'bucket_name',
                  key     => 'key_name',
                  content => { value => 'plip',
